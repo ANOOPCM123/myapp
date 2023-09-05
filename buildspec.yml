@@ -2,6 +2,9 @@ version: 0.2
 phases:
   pre_build:
     commands:
+      - cd $CODEBUILD_SRC_DIR_source1
+      - ls
+      - cd $CODEBUILD_SRC_DIR_source2
       - ls
       # - mvn clean install
       # - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 730471093388.dkr.ecr.us-east-1.amazonaws.com/myapp
