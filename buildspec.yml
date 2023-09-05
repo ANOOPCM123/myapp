@@ -1,0 +1,33 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - mvn clean install
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 730471093388.dkr.ecr.us-east-1.amazonaws.com/myapp
+      - REPOSITORY_URI=730471093388.dkr.ecr.us-east-1.amazonaws.com/myapp
+      - export KUBECONFIG=$HOME/.kube/config
+  build:
+    commands:
+      - docker build -t myapp .
+      - docker tag myapp:latest $REPOSITORY_URI:latest
+  post_build:
+    commands:
+      - echo Pushing the Docker images...
+      - docker push $REPOSITORY_URI:latest
+      - aws eks update-kubeconfig --region us-east-1 --name test-cluster
+      - sed -i 's@BUILD_ID@'"latest"'@' ./deployment/myapp-deploy.yaml
+      # # Extracting AWS Credential Information using STS Assume Role for kubectl
+      # - echo "Setting Environment Variables related to AWS CLI for Kube Config Setup"          
+      # - CREDENTIALS=$(aws sts assume-role --role-arn arn:aws:iam::730471093388:role/eksctl-test-cluster-cluster-ServiceRole-1Q8CLIAUQ8R6V --role-session-name codebuild-kubectl --duration-seconds 900)
+      # - export AWS_ACCESS_KEY_ID="$(echo ${CREDENTIALS} | jq -r '.Credentials.AccessKeyId')"
+      # - export AWS_SECRET_ACCESS_KEY="$(echo ${CREDENTIALS} | jq -r '.Credentials.SecretAccessKey')"
+      # - export AWS_SESSION_TOKEN="$(echo ${CREDENTIALS} | jq -r '.Credentials.SessionToken')"
+      # - export AWS_EXPIRATION=$(echo ${CREDENTIALS} | jq -r '.Credentials.Expiration')
+      # Setup kubectl with our EKS Cluster              
+      - echo "Update Kube Config"      
+      - aws eks update-kubeconfig --name test-cluster
+      # Apply changes to our Application using kubectl
+      - echo "deploying changes to eks"
+      - kubectl create ns myapp
+      - kubectl apply -f ./deployment/myapp-deploy.yaml -n myapp
+
